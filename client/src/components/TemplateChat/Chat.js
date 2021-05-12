@@ -3,6 +3,8 @@ import queryString from 'query-string';
 import io from "socket.io-client";
 import ReactEmoji from 'react-emoji';
 import { Link } from 'react-router-dom';
+import Popup from 'reactjs-popup';
+import 'reactjs-popup/dist/index.css';
 import './Chat.css';
 
 
@@ -23,9 +25,11 @@ function Chat({ location }) {
 	const [firstClick, setFirstClick] = useState(true);
 	const [displayAside, setDisplayAside] = useState({display:'block'});
 	const [displayMain, setDisplayMain] = useState({ display: 'none' });
+	const [selectedFile,setSelectedFile]=useState(null);
+	const [open, setOpen] = useState(false);
+	const [file,setFile]=useState('');
 	const time = new Date();
 	const formattedTime = time.toLocaleString("en-US", { hour: "numeric", minute: "numeric" });
-	
 
 	useEffect(() => {
 		
@@ -34,7 +38,7 @@ function Chat({ location }) {
 				.then(res => res.json())
 				.then(friend => setFriends(friend[0].Friends , console.log(`Friends feched ...`, JSON.stringify(friend[0].Friends ))));
 		//console.log(` l message ${messagesDB[[0]]['me'].message1}`);
-			
+		
 	}, []);
 
 
@@ -83,14 +87,28 @@ function Chat({ location }) {
 		//Fetch Messages DB
 		fetch(`http://localhost:5000/messages/${event.currentTarget.dataset.id}`)
 			.then(res => res.json())
-			.then(message => setMessagesDB(message));
+			.then(message => 	setMessagesDB(message)	);
+	
+	
 
-
+	
 		//Get messages reel time
 		socket.on('message', message => {
-			setMessages(messages => [...messages, message]);
+			setMessages(messages => [...messages, [message]]);
 			console.log(message)
 			
+		});
+		
+		socket.on('image', image => {
+			// create image with
+			const img = new Image();
+			// change image type to whatever you use, or detect it in the backend 
+			// and send it if you support multiple extensions
+			const name = image[0];
+			img.src = `data:image/jpg;base64,${image[1]}`; 
+			setMessages(files => [...files, [name,img.src] ]);
+			// Insert it into the DOM
+		
 		});
 	
 		
@@ -110,6 +128,7 @@ function Chat({ location }) {
 				body: JSON.stringify({
 					"Room":room,
 					"user": name,
+					"type":"text",
 					"message1": message,
 					"date": formattedTime
 				})
@@ -119,7 +138,31 @@ function Chat({ location }) {
 				.then(data => setPostId(data.id));
 		}
 		
+		
 	}
+
+///////////////Sending images//////////////
+const onFileChange=e=>{
+	setOpen(true) ;
+	var data = setSelectedFile( e.target.files[0]);
+
+}
+  const confirm=()=>{
+	setOpen(false);
+	const reader = new FileReader();
+	reader.onload = function() {
+	  const base64 = reader.result.replace(/.*base64,/, '');
+	  socket.emit('image',base64);
+	};
+	reader.readAsDataURL(selectedFile);
+  }
+
+
+  const cancel=()=>{
+	setOpen(false);
+  }
+
+	
 
 	return (
 		<div id="container">
@@ -161,15 +204,21 @@ function Chat({ location }) {
 						<ul id="chat">
 						{messagesDB.map((message, i) =>
 							<li key={i}
-								className={message['me'].name === nom ? 'you' : 'me'}>
+								className= {message['me'].name===nom ? 'you' : 'me'}>
 								<div className="entete">
 									<span className="status green"></span>
 									<h2 >{message['me'].name}</h2>
 									<br/>
-									<h3>10:12AM, Today</h3>
+									<h3>{message['me'].date}</h3>
 								</div>
 								<div className="triangle"></div>
-								<div className="message">{ReactEmoji.emojify(message['me'].message1)}</div>
+								{message['me'].type=="text"?(<div className="message">{ReactEmoji.emojify(message['me'].message1)}</div>
+)
+								
+								
+								:(<div className="message"><img style={{height:"200px", width:"200px"}} src={'data:image/jpg;base64,' + message['me'].message1}></img></div>
+								)}
+								
 							</li>
 						)}
 					</ul>
@@ -187,24 +236,69 @@ function Chat({ location }) {
 											<h3>{message['me'].date}</h3>
 										</div>
 										<div className="triangle"></div>
-										<div className="message">{ReactEmoji.emojify(message['me'].message1)}</div>
+										{message['me'].type=="text"?
+								(
+								<div className="message">{ReactEmoji.emojify(message['me'].message1)}</div>)
+								:
+								(
+								<div className="message"><img style={{height:"200px", width:"200px"}} src={'data:image/jpg;base64,' + message['me'].message1}></img></div>
+								)}
 									</li>
 								)}
+
+								
 								{messages.map((message, i) =>
+									<>
+								{message.length <2 ?
+								(
 									<li key={i}
-										className={message.user === nom ? 'you' : 'me'}>
+									className={message[0].user === nom ? 'you' : 'me'}>
+									<div className="entete">
+										<span className="status green"></span>
+										<h2>{message[0].user}</h2>
+										<br/>
+										<h3>{formattedTime}</h3>
+									</div>
+									<div className="triangle"></div>
+									<div className="message">{ReactEmoji.emojify(message[0].text)}</div>
+									
+								</li>
+								)
+								:
+								(<li key={i}
+										className= {message[0]=== nom ? 'you' : 'me'}>
 										<div className="entete">
 											<span className="status green"></span>
-											<h2>{message.user}</h2>
+											<h2>{message[0]}</h2>
 											<br/>
 											<h3>{formattedTime}</h3>
 										</div>
 										<div className="triangle"></div>
-										<div className="message">{ReactEmoji.emojify(message.text)}</div>
-									</li>
+										<div className="message"><img style={{height:"200px", width:"200px"}} src={message[1]}></img></div>
+										
+									</li>)}
+									</>
 								)}
+										
+									
 							</ul>
 						)}
+
+                   {selectedFile ? 
+				   			(
+							<Popup style={{width:10}} open={open} modal position="right center">
+							<div>
+							<h2>Are you sure about sending this file </h2> 
+							<p>File Name: {selectedFile.name}</p> 
+							<button onClick={confirm}>Confirm</button>
+							<button onClick={cancel}>Cancel</button>
+							</div>
+							</Popup>
+							)
+							:
+							(
+								<></>
+							)}
 					<footer>
 						<textarea placeholder="Type your message..."
 							type="text"
@@ -212,9 +306,18 @@ function Chat({ location }) {
 							onChange={(event) => setMessage(event.target.value)}
 							onKeyPress={event => event.key === 'Enter' ? sendMessage(event) : null}>
 						</textarea>
+						<label>
 						<img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/1940306/ico_picture.png" alt=""></img>
-						<img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/1940306/ico_file.png" alt=""></img>
+						<input type="file"  	value={file} accept=".png,.jpeg,.jpg" onChange={onFileChange} style={{display:"none"}} /> 
+						</label>
+						<label>
+						<img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/1940306/ico_file.png" alt="" ></img>
+						<input  style={{display:"none"}} /> 
+						</label>
 						<Link   onClick={sendMessage}>SEND</Link>
+						
+							
+													
 					</footer>
 				</main>
 

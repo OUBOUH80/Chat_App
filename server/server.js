@@ -5,6 +5,9 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bodyPaser = require('body-parser');
 const app = express();
+const fs = require('fs');
+const router1 = express.Router();
+const ItemMessage = require('./models/message');
 app.use(bodyPaser.json());
 
 //enable cors
@@ -55,11 +58,36 @@ io.on('connect', (socket) => {
     socket.on('sendMessage', (message, callback) => {
         const user = getUser(socket.id);
 
-        io.to(user.Room).emit('message', { user: user.Name, text: message });
+        io.to(user.Room).emit('message', { user: user.Name,type:"text", text: message });
 
         callback();
     });
 
+    //////////////////////////////////////////////////
+    socket.on('image', async image => {
+         const user = getUser(socket.id);
+        const buffer = Buffer.from(image, 'base64');
+        await fs.writeFile('uploads/file.txt', buffer,function (err) {
+            if (err) return console.log(err);}); // fs.promises
+            io.to(user.Room).emit('image', [user.Name,buffer.toString('base64')]); // image should be a buffer
+            //////////send it to db
+          
+                ItemMessage.collection.insert({
+                    Room: user.Room,
+                    me: 
+            
+                        {
+                            name:user.Name,
+                            type:"image",
+                            message1:buffer.toString('base64'),
+                        }
+                })
+                  
+            
+    });
+   
+
+    /////////////////////////////////////////////////
     socket.on('disconnect', () => {
         const user = removeUser(socket.id);
 

@@ -2,8 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Item = require('./models/Item');
 const ItemMessage = require('./models/message');
-
-
+const Message = require('./models/msg');
 
 //Get Freinds 
 router.get('/friends/:id', (req, res) => {
@@ -18,7 +17,6 @@ router.get('/messages/:id', (req, res) => {
     ItemMessage.find({ Room: req.params.id})
         .then(itemmessages => res.json(itemmessages))
 
-
 });
 
 //insert  messages into database
@@ -29,12 +27,11 @@ router.post('/insert/messages/sender', (req, res) => {
 
             {
                 name:req.body.user,
+                type:req.body.type,
                 message1: req.body.message1,
                 date:req.body.date
             }
 
-
-        
     })
         .then(itemmessages => res.json(itemmessages))
 
