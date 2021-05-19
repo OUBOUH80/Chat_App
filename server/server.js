@@ -55,17 +55,26 @@ io.on('connect', (socket) => {
         callback();
     });
 
+    ///Send message
+
     socket.on('sendMessage', (message, callback) => {
-        const user = getUser(socket.id);
+    const user = getUser(socket.id);       
 
         io.to(user.Room).emit('message', { user: user.Name,type:"text", text: message });
 
         callback();
     });
 
-    //////////////////////////////////////////////////
+    ///Send image
     socket.on('image', async image => {
-         const user = getUser(socket.id);
+        let newDate = new Date()
+        let date = newDate.getDate();
+        let month = newDate.getMonth() + 1;
+        let year = newDate.getFullYear();
+        let time = newDate.toLocaleString("en-US", { hour: "numeric", minute: "numeric" });
+        const formattedTime=`${date}${"/"}${month<10?`0${month}`:`${month}`}${"/"}${year}${" "}${"at"}${" "}${time}`;
+
+        const user = getUser(socket.id);
         const buffer = Buffer.from(image, 'base64');
         await fs.writeFile('uploads/file.txt', buffer,function (err) {
             if (err) return console.log(err);}); // fs.promises
@@ -80,14 +89,13 @@ io.on('connect', (socket) => {
                             name:user.Name,
                             type:"image",
                             message1:buffer.toString('base64'),
+                            date:formattedTime
                         }
-                })
-                  
-            
+                })     
     });
-   
-
+    
     /////////////////////////////////////////////////
+
     socket.on('disconnect', () => {
         const user = removeUser(socket.id);
 

@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const Item = require('./models/Item');
 const ItemMessage = require('./models/message');
-const Message = require('./models/msg');
 
 //Get Freinds 
 router.get('/friends/:id', (req, res) => {
